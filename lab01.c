@@ -5,6 +5,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
 
 
 void exec(char **args, int infile, int outfile, int errfile)
@@ -27,6 +28,7 @@ void exec(char **args, int infile, int outfile, int errfile)
                 close(errfile);
         }
 
+	
 	execve(args[0], args, envp);
 	perror("execve");
 	exit(EXIT_FAILURE);
@@ -34,12 +36,14 @@ void exec(char **args, int infile, int outfile, int errfile)
 }
 
 
-void launch(char ***g_tokens,int infile, int outfile, int errfile)
+void launch(char ***g_tokens,int in, int out, int err)
 {
         pid_t pid, wpid;
         int status;
-        int mypipe[2];
-        
+        int mypipe[2], infile, outfile, errfile;
+
+	infile = in;
+	errfile = err;       
 	
 
 	for( int i = 0; g_tokens[i]!=NULL ; i++)
@@ -54,11 +58,11 @@ void launch(char ***g_tokens,int infile, int outfile, int errfile)
 			outfile = mypipe[1]; 
 		}
 		else
-			outfile = 1;/////////////
+			outfile = out;
 		pid = fork();
 		if(pid == 0)
 		{
-			exec(g_tokens[i], infile, outfile, 2);
+			exec(g_tokens[i], infile, outfile, errfile);
 			
 		}
 		else if (pid < 0)
@@ -86,17 +90,14 @@ char *split_line(char *line)
 	//declaração de variaveis para strtok
 	char *str1, *str2, *str3, *token, *subtoken, *subtoken2;
         char *saveptr1, *saveptr2,*saveptr3;
-        int j, k, i = 0, cont = 0;
+        int j, k, i = 0, cont = 0, istd = -1, auxstd = -1;
 
 	//vetor para armazenar as partes da linha de comando
 	char **tokens;
 	int size_tokens = 64;
-
 	int std[3]= {0, 1, 2};
-
 	char ***g_tokens;
-	
-		      	
+			      	
 	g_tokens = malloc(size_tokens*sizeof(char**));
         if(!g_tokens)
         {
@@ -146,22 +147,102 @@ char *split_line(char *line)
 				
 				for (str3 = subtoken; ; str3 = NULL)
 				{
-					//char d = "<";
-                  			subtoken2 = strtok_r(str3, " \t\n", &saveptr3);
+				    	subtoken2 = strtok_r(str3, " \a\r\t\n", &saveptr3);
                    			if (subtoken2 == NULL)
                        				break;
 					
                    			//printf("     3-->  %s\n", subtoken2);
-               				
+               				char aux1 = '<';
+					char aux2 = '>';
+					char *aux3 = "2>";
+					
+					if (strncmp(subtoken2, &aux1, 1) == 0)
+					{
+						istd = i;
+						auxstd = 0;
+					}
+					else if (strncmp(subtoken2, &aux2, 1) == 0)
+					{
+						istd = i;
+						auxstd = 1;
 
-					tokens[i] = subtoken2;
-					i++;
+					}
+					else if (strncmp(subtoken2, aux3, 1) == 0)
+					{
+						istd = i;
+						auxstd = 2;
+
+					}
+					else
+					{
+						if (istd == i)
+						{
+							if(auxstd == 0)
+							{
+								std[0] = open(subtoken2, O_RDONLY);
+								if(std[0] < 0)
+								{
+									perror("open");
+									exit(EXIT_FAILURE);
+								}
+								auxstd = -1;
+								istd = -1;
+							}
+							else 
+							{
+								std[auxstd] = open(subtoken2, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+								if(std[auxstd] < 0)
+                                                                {
+                                                                        perror("open");
+                                                                        exit(EXIT_FAILURE);
+                                                                }
+								auxstd = -1;
+                                                                istd = -1;
+							}
+						}
+						else
+						{
+
+							tokens[i] = subtoken2;
+                                        		i++;
+						}
+					}
+
+
 			 	  }
 		   	}
 			else
 			{
-				tokens[i] = subtoken;
-				i++;
+				if (istd == i)
+                                {
+        	                        if(auxstd == 0)
+                                        {
+                                        	std[0] = open(subtoken2, O_RDONLY);
+						if(std[0] < 0)
+                                                {
+                                                	perror("open");
+                                                        exit(EXIT_FAILURE);
+                                                }
+						auxstd = -1;
+                                                istd = -1;
+                                         }
+                                         else
+                                         {
+                                         	std[auxstd] = open(subtoken2, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+                                                if(std[auxstd] < 0)
+                                                {
+                                                	perror("open");
+                                                        exit(EXIT_FAILURE);
+                                                }
+						auxstd = -1;
+                                                istd = -1;
+                                         }
+				}
+				else
+				{
+					tokens[i] = subtoken;
+					i++;
+				}
 			}
 
 			if(i >= size_tokens)
@@ -174,10 +255,7 @@ char *split_line(char *line)
 				}
 			}
        		}
-
 		tokens[i] = NULL;
-		
-		//launch(tokens);
 		g_tokens[cont] = tokens;
 		cont++;
 		if(cont >= size_tokens)
@@ -189,27 +267,15 @@ char *split_line(char *line)
 				exit(EXIT_FAILURE);
 			}
 		}
-		//printf("88888888888 %s\n",g_tokens[j-1][0]);
-		/*for(int a = 0; tokens[a] != NULL; a++)
-		{
-			printf("tokens: %d - %s\n", a, tokens[a]);
-		}*/	
-
-		//launch(tokens);
    	
         }
 	g_tokens[cont] = NULL;
-	/*
-	for(int i=0; g_tokens[i] != NULL; i++)
-	{	
-		printf("g_token %d\n", i);
-		char **tokens = g_tokens[i];
-		for(int k=0; tokens[k] !=NULL; k++)
-		{
-			printf("\t tokens: %d - %s\n", k, tokens[k]); 
-		}
-	}*/
-	launch(g_tokens, 0, 1, 2);
+	
+	
+	
+	launch(g_tokens, std[0], std[1], std[2]);
+	free(tokens);
+	free(g_tokens);
 }	
 
 
@@ -224,18 +290,17 @@ char *read_line()
 	
 	//se nao conseguir ler a linha pq ja chegou no fim do arquivo/comando retorna sucesso
 	//se nao conseguir ler por outro motivo printa o erro e retorna falha
-	//
-	nread = 1;
+	printf("\ncmd> ");
+	nread = getline(&line, &len, stdin);
 	int cont = 0;
 	while(nread != -1)
 	{
+		//printf para dbug
+		//printf("nread : %ld  -- Linha lida: %s\n", nread, line);
+		split_line(line);
 		printf("\ncmd> ");
 		nread = getline(&line, &len, stdin);
 		
-		//printf para dbug
-		printf("Linha lida: %s\n",line);
-		split_line(line);
-		//printf("\ncmd> ");
 	}
 			
 
