@@ -28,7 +28,6 @@ void exec(char **args, int infile, int outfile, int errfile)
                 close(errfile);
         }
 
-	
 	execve(args[0], args, envp);
 	perror("execve");
 	exit(EXIT_FAILURE);
@@ -84,6 +83,7 @@ void launch(char ***g_tokens,int in, int out, int err)
         }
 }
 
+
 //função para dividir a linha
 char *split_line(char *line)
 {
@@ -97,7 +97,12 @@ char *split_line(char *line)
 	int size_tokens = 64;
 	int std[3]= {0, 1, 2};
 	char ***g_tokens;
-			      	
+	
+	char aux1 = '<';
+	char aux2 = '>';
+	char *aux3 = "2>";
+
+
 	g_tokens = malloc(size_tokens*sizeof(char**));
         if(!g_tokens)
         {
@@ -131,7 +136,6 @@ char *split_line(char *line)
 
 		//printf para dbug
                 //printf("%d: %s\n", j, token);
-		
 		for (k = 1, str2 = token; ; k++,  str2 = NULL)
 	       	{
 			//separar cada parte dividida por "
@@ -152,9 +156,6 @@ char *split_line(char *line)
                        				break;
 					
                    			//printf("     3-->  %s\n", subtoken2);
-               				char aux1 = '<';
-					char aux2 = '>';
-					char *aux3 = "2>";
 					
 					if (strncmp(subtoken2, &aux1, 1) == 0)
 					{
@@ -243,8 +244,7 @@ char *split_line(char *line)
 					tokens[i] = subtoken;
 					i++;
 				}
-			}
-
+			}	
 			if(i >= size_tokens)
 			{
 				tokens = realloc(tokens, size_tokens * sizeof(char*));
@@ -270,7 +270,21 @@ char *split_line(char *line)
    	
         }
 	g_tokens[cont] = NULL;
-	
+/*
+	printf("********************************\n");
+        for(int i=0; g_tokens[i] != NULL; i++)
+        {
+                printf("g_token %d\n", i);
+                char **tokens = g_tokens[i];
+                for(int k=0; tokens[k] !=NULL; k++)
+                {
+                        printf("\t tokens: %d - %s\n", k, tokens[k]);
+                }
+        }
+        printf("********************************\n");
+*/
+
+        //printf("stdin %d\n\n\n", std[0]);
 	
 	
 	launch(g_tokens, std[0], std[1], std[2]);
