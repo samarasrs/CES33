@@ -88,8 +88,8 @@ void launch(char ***g_tokens,int in, int out, int err)
 char *split_line(char *line)
 {
 	//declaração de variaveis para strtok
-	char *str1, *str2, *str3, *token, *subtoken, *subtoken2;
-        char *saveptr1, *saveptr2,*saveptr3;
+	char *str1, *str2, *str3, *str4, *str5, *str6, *token, *subtoken, *subtoken2, *subtoken3, *subtoken4;
+        char *saveptr1, *saveptr2,*saveptr3, *saveptr4, *saveptr5, *saveptr6;
         int j, k, i = 0, cont = 0, istd = -1, auxstd = -1;
 
 	//vetor para armazenar as partes da linha de comando
@@ -202,8 +202,9 @@ char *split_line(char *line)
 							}
 						}
 						else
-						{
-
+						{	
+							
+							
 							tokens[i] = subtoken2;
                                         		i++;
 						}
