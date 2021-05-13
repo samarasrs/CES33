@@ -1,0 +1,7 @@
+/bin/ls /bin
+/bin/ls /bin > /tmp/test3.txt
+/bin/grep ^z   /tmp/test3.txt
+/bin/grep ^z   /tmp/test3.txt > /tmp/out3.txt
+/bin/grep -v ^[a-y] /tmp/test3.txt | /bin/sort -r
+/bin/grep ^z < /tmp/test3.txt | /bin/grep fo | /bin/sort -r > /tmp/pipe3.txt
+/bin/cat /tmp/pipe3.txt
